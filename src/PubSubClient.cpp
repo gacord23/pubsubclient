@@ -273,6 +273,7 @@ uint16_t PubSubClient::readPacket(uint8_t* lengthLength) {
     }
 
     if (!this->stream && len > MQTT_MAX_PACKET_SIZE) {
+        Serial.printf("Packet too big.  Size is: %i\n", len);
         len = 0; // This will cause the packet to be ignored.
     }
 
@@ -306,10 +307,12 @@ boolean PubSubClient::loop() {
                 uint8_t type = buffer[0]&0xF0;
                 if (type == MQTTPUBLISH) {
                     if (callback) {
-                        uint16_t tl = (buffer[llen+1]<<8)+buffer[llen+2]; /* topic length in bytes */
-                        memmove(buffer+llen+2,buffer+llen+3,tl); /* move topic inside buffer 1 byte to front */
-                        buffer[llen+2+tl] = 0; /* end the topic as a 'C' string with \x00 */
-                        char *topic = (char*) buffer+llen+2;
+                        uint16_t tl = (buffer[llen+1]<<8)+buffer[llen+2];
+                        char topic[tl+1];
+                        for (uint16_t i=0;i<tl;i++) {
+                            topic[i] = buffer[llen+3+i];
+                        }
+                        topic[tl] = 0;
                         // msgId only present for QOS>0
                         if ((buffer[0]&0x06) == MQTTQOS1) {
                             msgId = (buffer[llen+3+tl]<<8)+buffer[llen+3+tl+1];
